@@ -15,10 +15,7 @@ final class LockEngine {
 
     let settings: LockSettings
 
-    /// Bundle IDs unlocked since the last relock.
-    private var unlocked: Set<String> = []
-    /// When each unlocked app last lost focus; the grace period counts from here.
-    private var leftAt: [String: Date] = [:]
+    private var state = LockState()
     private var isAuthenticating = false
 
     @ObservationIgnored private lazy var prompt = LockPromptController(engine: self)
@@ -31,7 +28,7 @@ final class LockEngine {
         observeApps(NSWorkspace.didActivateApplicationNotification) { [weak self] in self?.appDidActivate($0) }
         observeApps(NSWorkspace.didDeactivateApplicationNotification) { [weak self] app in
             guard let id = app.bundleIdentifier else { return }
-            self?.leftAt[id] = .now
+            self?.state.didLeave(id)
         }
         // Apps opened in the background (login items, `open -g`) never
         // activate, so hide them on launch as well.
@@ -41,8 +38,7 @@ final class LockEngine {
         }
         observeApps(NSWorkspace.didTerminateApplicationNotification) { [weak self] app in
             guard let id = app.bundleIdentifier else { return }
-            self?.unlocked.remove(id)
-            self?.leftAt[id] = nil
+            self?.state.forget(id)
         }
 
         let relock: @Sendable (Notification) -> Void = { [weak self] _ in
@@ -65,8 +61,7 @@ final class LockEngine {
 
     /// Forgets every unlock and hides all running locked apps.
     func lockAll() {
-        unlocked.removeAll()
-        leftAt.removeAll()
+        state.relockAll()
         for app in NSWorkspace.shared.runningApplications {
             if let id = app.bundleIdentifier, needsUnlock(id) { app.hide() }
         }
@@ -87,8 +82,7 @@ final class LockEngine {
         let name = app.localizedName ?? "this app"
         guard await Authenticator.authenticate(reason: "unlock \(name)") else { return }
 
-        unlocked.insert(id)
-        leftAt[id] = nil
+        state.didUnlock(id)
         prompt.dismiss()
         app.unhide()
         // Since macOS 14 activation is cooperative: we hold focus (the prompt
@@ -98,7 +92,11 @@ final class LockEngine {
     }
 
     private func appDidActivate(_ app: NSRunningApplication) {
-        guard let id = app.bundleIdentifier, needsUnlock(id) else { return }
+        guard let id = app.bundleIdentifier else { return }
+        guard needsUnlock(id) else {
+            state.didReturn(id)
+            return
+        }
         app.hide()
         // A second locked app activating mid-prompt just stays hidden; the
         // user can return to it once the current prompt is done.
@@ -108,14 +106,7 @@ final class LockEngine {
 
     private func needsUnlock(_ id: String) -> Bool {
         guard settings.isEnabled, settings.isLocked(id) else { return false }
-        guard unlocked.contains(id) else { return true }
-        if let grace = settings.gracePeriod.interval,
-           let left = leftAt[id],
-           Date.now.timeIntervalSince(left) > grace {
-            unlocked.remove(id)
-            return true
-        }
-        return false
+        return state.needsUnlock(id, grace: settings.gracePeriod.interval)
     }
 
     private func observeApps(

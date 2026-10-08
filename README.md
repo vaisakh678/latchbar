@@ -4,6 +4,14 @@ A free, open-source menu bar app that locks your Mac apps behind **Touch ID, App
 
 Pick the apps you want to protect. When one of them is opened, Latchbar hides it and asks you to authenticate. Nothing is stored or sent anywhere: authentication goes through macOS's own LocalAuthentication, so Latchbar never sees your password or fingerprint.
 
+## Install
+
+```sh
+brew install --cask vaisakh678/tap/latchbar
+```
+
+Or download `Latchbar-<version>.zip` from [Releases](https://github.com/vaisakh678/latchbar/releases), unzip, and move it to Applications. Builds are signed and notarized. Requires macOS 14 Sonoma or later.
+
 ## Features
 
 - Lock any app; unlock with Touch ID, a paired Apple Watch, or your password
@@ -26,7 +34,13 @@ xcodegen generate
 open Latchbar.xcodeproj
 ```
 
-Debug builds are ad-hoc signed, so "Launch at login" won't stick until you build with a real signing identity.
+Run the tests with `xcodebuild -scheme Latchbar test`. Debug builds are ad-hoc signed, so "Launch at login" won't stick until you build with a real signing identity.
+
+The app icon is drawn in code; edit `Tools/make-appicon.swift` and run `swift Tools/make-appicon.swift Resources/Assets.xcassets`.
+
+## Releasing
+
+`scripts/release.sh <version>` archives, signs with Developer ID, notarizes, publishes a GitHub Release, and updates the cask in [vaisakh678/homebrew-tap](https://github.com/vaisakh678/homebrew-tap). Pass `--no-publish` to stop after building. See the script header for one-time setup.
 
 ## Why not the Mac App Store?
 
@@ -37,7 +51,6 @@ A sandboxed app can't hide or reveal other apps, so Latchbar is distributed as a
 - Cover the app with an overlay instead of hiding it (no window flash)
 - Hide locked apps' windows from Mission Control and the app switcher
 - Lock folders and files
-- Homebrew Cask
 
 ## License
 
