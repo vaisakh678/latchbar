@@ -5,18 +5,23 @@ import SwiftUI
 struct MenuContentView: View {
     let engine: LockEngine
     @Bindable var settings: LockSettings
-
-    @Environment(\.openSettings) private var openSettings
+    let settingsWindow: SettingsWindowController
 
     var body: some View {
         let count = settings.lockedApps.count
-        Text(count == 1 ? "1 app protected" : "\(count) apps protected")
+        if !settings.isEnabled {
+            Text("Locking paused")
+        } else if count == 0 {
+            Text("No apps locked yet")
+        } else {
+            Text(count == 1 ? "1 app locked" : "\(count) apps locked")
+        }
 
         Divider()
 
         Button("Lock All Now") { engine.lockAll() }
             .keyboardShortcut("l")
-            .disabled(!settings.isEnabled)
+            .disabled(!settings.isEnabled || count == 0)
 
         if settings.isEnabled {
             Button("Pause Locking") {
@@ -35,12 +40,15 @@ struct MenuContentView: View {
 
         Button("Settings…") {
             Task {
-                guard await engine.authorizeChange("open Latchbar settings") else { return }
-                NSApp.activate()
-                openSettings()
+                if await engine.authorizeChange("open Latchbar settings") { settingsWindow.show() }
             }
         }
         .keyboardShortcut(",")
+
+        Button("About Latchbar") {
+            NSApp.activate()
+            NSApp.orderFrontStandardAboutPanel(nil)
+        }
 
         Button("Quit Latchbar") {
             Task {
