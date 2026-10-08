@@ -1,0 +1,49 @@
+name: Latchbar
+
+options:
+  bundleIdPrefix: com.cortexlumora
+  # Stamps LastUpgradeCheck so Xcode stops offering "Update to recommended
+  # settings" — accepting it would only edit the generated .xcodeproj.
+  xcodeVersion: "27.0"
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_STRICT_CONCURRENCY: complete
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+
+targets:
+  Latchbar:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+      - path: Resources/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cortexlumora.Latchbar
+        PRODUCT_NAME: Latchbar
+        INFOPLIST_FILE: Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Resources/Latchbar.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        COMBINE_HIDPI_IMAGES: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        # Ad-hoc signing keeps day-to-day builds working with no certificate
+        # installed. Launch at login is refused for these builds.
+        Debug:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "-"
+        # Distributed outside the App Store (GitHub Releases / Homebrew Cask),
+        # so Release signs with Developer ID and must be notarized.
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+          DEVELOPMENT_TEAM: KTJUU8D53Q
